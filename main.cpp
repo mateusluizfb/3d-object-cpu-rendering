@@ -9,6 +9,7 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
+#include <string>
 #include <vector>
 #include <stdio.h>
 #include <iostream>
@@ -32,7 +33,8 @@ void print(const T& arg) {
 Coord to_2d(Coord coord) {
     return {
         coord.x / coord.z,
-        coord.y / coord.z
+        coord.y / coord.z,
+        coord.z,
     };
 }
 
@@ -47,12 +49,14 @@ float to_cartesian_y (float y) {
 void render_point(SDL_Renderer* renderer, Coord coord) {
     float x = coord.x;
     float y = coord.y;
+    float w = pixel_w - (coord.z - 1);
+    float h = pixel_h - (coord.z - 1);
 
     SDL_FRect pixel = {
-        to_cartesian_x(x) - (pixel_w / 2.0f),
-        to_cartesian_y(y) - (pixel_h / 2.0f), 
-        pixel_w,
-        pixel_h
+        to_cartesian_x(x) - (w / 2.0f),
+        to_cartesian_y(y) - (h / 2.0f), 
+        w,
+        h
     };
 
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
