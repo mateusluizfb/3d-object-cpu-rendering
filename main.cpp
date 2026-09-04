@@ -9,13 +9,14 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
-#include <cmath>
 #include <vector>
 #include <stdio.h>
 #include <iostream>
 
 int window_width = 1200;
 int window_height = 800;
+float pixel_h = 10.0f;
+float pixel_w = 10.0f;
 
 struct Coord {
     float x;
@@ -28,28 +29,63 @@ void print(const T& arg) {
     std::cout << arg << std::endl;
 }
 
+Coord to_2d(Coord coord) {
+    return {
+        coord.x / coord.z,
+        coord.y / coord.z
+    };
+}
+
+float to_cartesian_x(float x) {
+    return (((x + 1) / 2) * window_width) ; // normalize to coordidates where 0 is the center
+}
+
+float to_cartesian_y (float y) {
+    return (1 - ((y + 1) / 2)) * window_height; // 1 - is needed so -0.5 for example "goes down", where y goes from 1 to -1
+}
+
 void render_point(SDL_Renderer* renderer, Coord coord) {
-    float w = 10.0f;
-    float h = 10.0f;
     float x = coord.x;
     float y = coord.y;
 
     SDL_FRect pixel = {
-        (((x + 1) / 2) * window_width) - (w / 2.0f), // normalize to coordidates where 0 is the center, minus the offset to centralize it for real
-        (1 - ((y + 1) / 2)) * window_height - (h / 2.0f), // 1 - is needed so -0.5 for example "goes down", where y goes from 1 to -1 
-        w,
-        h
+        to_cartesian_x(x) - (pixel_w / 2.0f),
+        to_cartesian_y(y) - (pixel_h / 2.0f), 
+        pixel_w,
+        pixel_h
     };
 
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     SDL_RenderFillRect(renderer, &pixel); 
 }
 
-Coord to_2d(Coord* coord) {
-    return {
-        coord->x / coord->z,
-        coord->y / coord->z
-    };
+void render_points(SDL_Renderer* renderer, std::vector<Coord>* coords) {
+     size_t size = coords->size();
+
+    for (size_t i = 0; i < size; i++) {
+        Coord coord = (*coords)[i];
+        render_point(renderer, to_2d(coord));
+    }
+}
+
+void render_lines(SDL_Renderer* renderer, std::vector<Coord>* coords) {
+    size_t size = coords->size();
+    SDL_FPoint points[size];
+
+    for (size_t i = 0; i < size; i++) {
+        Coord coord_2d = to_2d((*coords)[i]);
+
+        float x = to_cartesian_x(coord_2d.x);
+        float y = to_cartesian_y(coord_2d.y);
+
+        points[i] = { x, y };
+    }
+
+    bool result = SDL_RenderLines(renderer, points, (int) size);  
+
+    if (!result){
+        print("Error while drawing lines");
+    }
 }
 
 int main(int arhc, char* argv[]) {
@@ -65,8 +101,29 @@ int main(int arhc, char* argv[]) {
 
     Uint64 frameStart = -1;
     std::vector<Coord> coords = {
-        { 0.5, 0.5, 1.0 },
-        { -0.5, 0.5, 1.0}
+        // Front Face Loop
+        { 0.5f,  0.5f, 1.0f},
+        {-0.5f,  0.5f, 1.0f},
+        {-0.5f, -0.5f, 1.0f},
+        { 0.5f, -0.5f, 1.0f},
+        { 0.5f,  0.5f, 1.0f}, // Close front face
+
+        // Connect Front to Back (Top-Right Edge)
+        { 0.5f,  0.5f, 1.5f},
+
+        // Back Face Loop
+        {-0.5f,  0.5f, 1.5f},
+        {-0.5f, -0.5f, 1.5f},
+        { 0.5f, -0.5f, 1.5f},
+        { 0.5f,  0.5f, 1.5f}, // Close back face
+
+        // Remaining 3 Connecting Edges
+        { 0.5f, -0.5f, 1.5f}, // Move to Back Bottom-Right
+        { 0.5f, -0.5f, 1.0f}, // Connect to Front Bottom-Right
+        {-0.5f, -0.5f, 1.0f}, // Move to Front Bottom-Left
+        {-0.5f, -0.5f, 1.5f}, // Connect to Back Bottom-Left
+        {-0.5f,  0.5f, 1.5f}, // Move to Back Top-Left
+        {-0.5f,  0.5f, 1.0f}  // Connect to Front Top-Left
     };
 
     // Main Loop
@@ -82,24 +139,24 @@ int main(int arhc, char* argv[]) {
             }
         }
 
+        for (size_t i = 0; i < coords.size(); i++) {
+            Coord* coord_pointer = &coords[i];
+            coord_pointer->z += 0.1 * dt;
+        }
+
+
         // Render
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-
-         
-
-        for (size_t i = 0; i < coords.size(); i++) {
-            Coord* coord = &coords[i];
-            coord->z += 0.1 * dt;
-            render_point(renderer, to_2d(coord));
-        }
-        
+   
+        render_points(renderer, &coords);
+        render_lines(renderer, &coords); 
 
         if (exit) {
             break;
         }
 
         SDL_RenderPresent(renderer);
-        SDL_Delay(33); // Force 30 FPS -> 1000 (1s) / 30 = 33.3333...
+        SDL_Delay(60); // Force 60 FPS -> 1000 (1s) / 60 = 66.6666...
     }
 }
