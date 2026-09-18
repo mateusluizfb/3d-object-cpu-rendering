@@ -10,6 +10,7 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
 #include <string>
+#include <cmath>
 #include <vector>
 #include <stdio.h>
 #include <iostream>
@@ -92,6 +93,27 @@ void render_lines(SDL_Renderer* renderer, std::vector<Coord>* coords) {
     }
 }
 
+Coord get_center(const std::vector<Coord>& coords) {
+    float min_x = coords[0].x, max_x = coords[0].x;
+    float min_y = coords[0].y, max_y = coords[0].y;
+    float min_z = coords[0].z, max_z = coords[0].z;
+
+    for (const auto& c : coords) {
+        if (c.x < min_x) min_x = c.x;
+        if (c.x > max_x) max_x = c.x;
+        if (c.y < min_y) min_y = c.y;
+        if (c.y > max_y) max_y = c.y;
+        if (c.z < min_z) min_z = c.z;
+        if (c.z > max_z) max_z = c.z;
+    }
+
+    return {
+        (min_x + max_x) / 2.0f,
+        (min_y + max_y) / 2.0f,
+        (min_z + max_z) / 2.0f
+    };
+}
+
 int main(int arhc, char* argv[]) {
     print("Starting");
 
@@ -130,6 +152,9 @@ int main(int arhc, char* argv[]) {
         {-0.5f,  0.5f, 1.0f}  // Connect to Front Top-Left
     };
 
+    double PI = 3.141592;
+   
+
     // Main Loop
     while(true) {
         Uint64 ticks = SDL_GetTicks();
@@ -137,6 +162,10 @@ int main(int arhc, char* argv[]) {
         frameStart = ticks;
 
         // Update
+        
+        double angle = (2.0 * PI) * (0.5 * dt);
+        Coord center = get_center(coords);
+
         while(SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
                 exit = true;
@@ -145,7 +174,16 @@ int main(int arhc, char* argv[]) {
 
         for (size_t i = 0; i < coords.size(); i++) {
             Coord* coord_pointer = &coords[i];
-            coord_pointer->z += 0.1 * dt;
+            
+            // rotate
+            float x = (coord_pointer->x - center.x) * std::cos(angle) - (coord_pointer->z - center.z) * std::sin(angle);
+            float z = (coord_pointer->x - center.x) * std::sin(angle) + (coord_pointer->z - center.z) * std::cos(angle);
+
+            coord_pointer->x = x + center.x;
+            coord_pointer->z = z + center.z;
+
+            // move back
+            coord_pointer->z += 0.5 * dt;
         }
 
 
