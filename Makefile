@@ -17,3 +17,7 @@ run: $(TARGET)
 
 clean:
 	rm -f $(TARGET)
+
+
+compile_parser:
+	$(CXX) ./src/obj_parser.cpp -o obj_parser $(CXXFLAGS) $(LDFLAGS)
