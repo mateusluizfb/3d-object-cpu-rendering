@@ -9,11 +9,11 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
-#include <string>
 #include <cmath>
 #include <vector>
 #include <stdio.h>
-#include <iostream>
+
+#include "./utils/logger.h" 
 
 int window_width = 1200;
 int window_height = 800;
@@ -25,11 +25,6 @@ struct Coord {
     float y;
     float z;
 };
-
-template <typename T>
-void print(const T& arg) {
-    std::cout << arg << std::endl;
-}
 
 Coord to_2d(Coord coord) {
     return {
