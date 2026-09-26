@@ -118,10 +118,10 @@ Coord get_center(const std::vector<Coord>& coords) {
 }
 
 void update_rotate(float dt, Coord center, Coord* coord_pointer) {
-    double angle = (2.0 * PI) * (0.5 * dt);
+    double rotation_rate = (0.8 * dt);
 
-    float x = (coord_pointer->x - center.x) * std::cos(angle) - (coord_pointer->z - center.z) * std::sin(angle);
-    float z = (coord_pointer->x - center.x) * std::sin(angle) + (coord_pointer->z - center.z) * std::cos(angle);
+    float x = (coord_pointer->x - center.x) * std::cos(rotation_rate) - (coord_pointer->z - center.z) * std::sin(rotation_rate);
+    float z = (coord_pointer->x - center.x) * std::sin(rotation_rate) + (coord_pointer->z - center.z) * std::cos(rotation_rate);
 
     coord_pointer->x = x + center.x;
     coord_pointer->z = z + center.z;
