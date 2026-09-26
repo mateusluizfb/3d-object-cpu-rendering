@@ -13,7 +13,9 @@
 #include <vector>
 #include <stdio.h>
 
-#include "./utils/logger.h" 
+#include "logger.h" 
+
+double PI = 3.141592;
 
 int window_width = 1200;
 int window_height = 800;
@@ -35,10 +37,12 @@ Coord to_2d(Coord coord) {
 }
 
 float to_cartesian_x(float x) {
-    return (((x + 1) / 2) * window_width) ; // normalize to coordidates where 0 is the center
+    return (((x + 1) / 2) * window_width) ; // transform coordinates from NDCto the SDL coorisnate system, where the top-left-edge is 0
 }
 
 float to_cartesian_y (float y) {
+    // transform coordinates from NDCto the SDL coorisnate system, where the top-left-edge is 0
+
     return (1 - ((y + 1) / 2)) * window_height; // 1 - is needed so -0.5 for example "goes down", where y goes from 1 to -1
 }
 
@@ -89,9 +93,13 @@ void render_lines(SDL_Renderer* renderer, std::vector<Coord>* coords) {
 }
 
 Coord get_center(const std::vector<Coord>& coords) {
-    float min_x = coords[0].x, max_x = coords[0].x;
-    float min_y = coords[0].y, max_y = coords[0].y;
-    float min_z = coords[0].z, max_z = coords[0].z;
+    float min_x = coords[0].x; 
+    float min_y = coords[0].y; 
+    float min_z = coords[0].z;
+
+    float max_x = coords[0].x;
+    float max_y = coords[0].y;
+    float max_z = coords[0].z;
 
     for (const auto& c : coords) {
         if (c.x < min_x) min_x = c.x;
@@ -108,6 +116,21 @@ Coord get_center(const std::vector<Coord>& coords) {
         (min_z + max_z) / 2.0f
     };
 }
+
+void update_rotate(float dt, Coord center, Coord* coord_pointer) {
+    double angle = (2.0 * PI) * (0.5 * dt);
+
+    float x = (coord_pointer->x - center.x) * std::cos(angle) - (coord_pointer->z - center.z) * std::sin(angle);
+    float z = (coord_pointer->x - center.x) * std::sin(angle) + (coord_pointer->z - center.z) * std::cos(angle);
+
+    coord_pointer->x = x + center.x;
+    coord_pointer->z = z + center.z;
+}
+
+void update_move_back(float dt, Coord* coord_pointer) {
+    coord_pointer->z += 0.5 * dt; 
+}
+
 
 int main(int arhc, char* argv[]) {
     print("Starting");
@@ -147,9 +170,6 @@ int main(int arhc, char* argv[]) {
         {-0.5f,  0.5f, 1.0f}  // Connect to Front Top-Left
     };
 
-    double PI = 3.141592;
-   
-
     // Main Loop
     while(true) {
         Uint64 ticks = SDL_GetTicks();
@@ -157,8 +177,6 @@ int main(int arhc, char* argv[]) {
         frameStart = ticks;
 
         // Update
-        
-        double angle = (2.0 * PI) * (0.5 * dt);
         Coord center = get_center(coords);
 
         while(SDL_PollEvent(&event)) {
@@ -171,14 +189,10 @@ int main(int arhc, char* argv[]) {
             Coord* coord_pointer = &coords[i];
             
             // rotate
-            float x = (coord_pointer->x - center.x) * std::cos(angle) - (coord_pointer->z - center.z) * std::sin(angle);
-            float z = (coord_pointer->x - center.x) * std::sin(angle) + (coord_pointer->z - center.z) * std::cos(angle);
-
-            coord_pointer->x = x + center.x;
-            coord_pointer->z = z + center.z;
+            update_rotate(dt, center, coord_pointer); 
 
             // move back
-            coord_pointer->z += 0.5 * dt;
+            update_move_back(dt, coord_pointer);
         }
 
 

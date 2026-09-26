@@ -1,12 +1,12 @@
 # Cube definition
-v -0.5 -0.5  0.5   # Vertex 1 (x, y, z)
-v  0.5 -0.5  0.5   # Vertex 2
-v  0.5  0.5  0.5   # Vertex 3
-v -0.5  0.5  0.5   # Vertex 4
-v -0.5 -0.5 -0.5   # Vertex 5
-v  0.5 -0.5 -0.5   # Vertex 6
-v  0.5  0.5 -0.5   # Vertex 7
-v -0.5  0.5 -0.5   # Vertex 8
+v -0.5 -0.5  0.5
+v  0.5 -0.5  0.5
+v  0.5  0.5  0.5
+v -0.5  0.5  0.5
+v -0.5 -0.5 -0.5
+v  0.5 -0.5 -0.5
+v  0.5  0.5 -0.5
+v -0.5  0.5 -0.5
 
 # Faces (f v1 v2 v3) - Using 1-based indexing!
 f 1 2 3

@@ -1,58 +1,66 @@
-#include <memory>
+#include <sstream>
+#include <stdexcept>
 #include <vector>
-#include <iostream>
 #include <fstream>
 #include <string>
 
-#include "./utils/logger.h" 
+#include "obj_parser.h"
+#include "logger.h" 
 
-struct Coord {
-    float x;
-    float y;
-    float z;
-};
+std::vector<std::string> parse_line (std::string line) {
+    std::vector<std::string> word_list = {};
 
-struct Faces {
-    int v1;
-    int v2;
-    int v3;
-};
+    std::stringstream ss(line);
+    std::string word;
 
-struct Mesh {
-    std::vector<Coord> coords;
-    std::vector<Faces> faces;
-};
+    while (ss >> word) {
+        word_list.push_back(word);
+    }
 
-int main(int arhc, char* argv[]) {
+    return word_list;
+} 
+
+
+Mesh create_mesh() {
     std::ifstream file("./src/cube.obj");
 
     if (!file.is_open()) {
-        print("ERROR - File not opened");
-        return 1;
+        throw std::runtime_error("Obj file not opened");
     }
 
-    std::unique_ptr<Mesh> mesh_ptr = std::make_unique<Mesh>(Mesh{.coords = {}, .faces = {}}); 
+    Mesh mesh_ptr = Mesh{.coords = {}, .faces = {}}; 
 
     std::string line;
+    
     while (std::getline(file, line)) {
         if (line.empty()) {
             continue;
         }
 
-        if (line.front() == 'v') {
-            print("Is vector");
+        std::vector<std::string> word_list = parse_line(line);
 
-            // TODO: Fill vector list
+
+        if (word_list[0] == "v") {
+            float x = std::stof(word_list[1]);
+            float y = std::stof(word_list[2]);
+            float z = std::stof(word_list[3]);
+
+            mesh_ptr.coords.push_back(Coord{x, y, z});
+            continue;
         }
 
-        if (line.front() == 'f') {
-            print("Is faces");
+        if (word_list[0] == "f") {
 
-            // TODO: Fill faces list
+            int v1 = std::stoi(word_list[1]);
+            int v2 = std::stoi(word_list[2]);
+            int v3 = std::stoi(word_list[3]);
+
+            mesh_ptr.faces.push_back(Faces{v1, v2, v3});
+            continue;
         }
     }
 
     file.close();
 
-    return 0;
+    return mesh_ptr;
 }
