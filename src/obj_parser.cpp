@@ -5,7 +5,6 @@
 #include <string>
 
 #include "obj_parser.h"
-#include "logger.h" 
 
 std::vector<std::string> parse_line (std::string line) {
     std::vector<std::string> word_list = {};
@@ -28,7 +27,7 @@ Mesh create_mesh() {
         throw std::runtime_error("Obj file not opened");
     }
 
-    Mesh mesh_ptr = Mesh{.coords = {}, .faces = {}}; 
+    Mesh mesh = Mesh{.coords = {}, .faces = {}}; 
 
     std::string line;
     
@@ -45,7 +44,7 @@ Mesh create_mesh() {
             float y = std::stof(word_list[2]);
             float z = std::stof(word_list[3]);
 
-            mesh_ptr.coords.push_back(Coord{x, y, z});
+            mesh.coords.push_back(Coord{x, y, z});
             continue;
         }
 
@@ -55,12 +54,12 @@ Mesh create_mesh() {
             int v2 = std::stoi(word_list[2]);
             int v3 = std::stoi(word_list[3]);
 
-            mesh_ptr.faces.push_back(Faces{v1, v2, v3});
+            mesh.faces.push_back(Faces{v1, v2, v3});
             continue;
         }
     }
 
     file.close();
 
-    return mesh_ptr;
+    return mesh;
 }

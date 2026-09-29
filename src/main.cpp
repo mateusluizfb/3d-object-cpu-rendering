@@ -10,9 +10,12 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3_image/SDL_image.h>
 #include <cmath>
+#include <string>
 #include <vector>
 #include <stdio.h>
 
+#include "common.h" 
+#include "obj_parser.h" 
 #include "logger.h" 
 
 double PI = 3.141592;
@@ -21,12 +24,6 @@ int window_width = 1200;
 int window_height = 800;
 float pixel_h = 10.0f;
 float pixel_w = 10.0f;
-
-struct Coord {
-    float x;
-    float y;
-    float z;
-};
 
 Coord to_2d(Coord coord) {
     return {
@@ -41,7 +38,7 @@ float to_cartesian_x(float x) {
 }
 
 float to_cartesian_y (float y) {
-    // transform coordinates from NDCto the SDL coorisnate system, where the top-left-edge is 0
+    // transform coordinates from NDC to the SDL coordinate system, where the top-left-edge is 0
 
     return (1 - ((y + 1) / 2)) * window_height; // 1 - is needed so -0.5 for example "goes down", where y goes from 1 to -1
 }
@@ -131,6 +128,25 @@ void update_move_back(float dt, Coord* coord_pointer) {
     coord_pointer->z += 0.5 * dt; 
 }
 
+std::vector<Coord> mesh_to_coords(Mesh mesh) {
+    std::vector<Coord> coords = {};
+
+    for (size_t i = 0; i < mesh.faces.size(); i++) {
+        Coord v1 = mesh.coords[mesh.faces[i].v1 - 1];
+        Coord v2 = mesh.coords[mesh.faces[i].v2 - 1];
+        Coord v3 = mesh.coords[mesh.faces[i].v3 - 1];
+
+        coords.push_back(v1);
+        coords.push_back(v2);
+        coords.push_back(v3);
+        coords.push_back(v1);
+
+        // TODO: There are overlapping edges, from overlapping triangles
+    }
+
+    return coords;
+} 
+
 
 int main(int arhc, char* argv[]) {
     print("Starting");
@@ -144,31 +160,9 @@ int main(int arhc, char* argv[]) {
     bool exit = false;
 
     Uint64 frameStart = -1;
-    std::vector<Coord> coords = {
-        // Front Face Loop
-        { 0.5f,  0.5f, 1.0f},
-        {-0.5f,  0.5f, 1.0f},
-        {-0.5f, -0.5f, 1.0f},
-        { 0.5f, -0.5f, 1.0f},
-        { 0.5f,  0.5f, 1.0f}, // Close front face
 
-        // Connect Front to Back (Top-Right Edge)
-        { 0.5f,  0.5f, 1.5f},
-
-        // Back Face Loop
-        {-0.5f,  0.5f, 1.5f},
-        {-0.5f, -0.5f, 1.5f},
-        { 0.5f, -0.5f, 1.5f},
-        { 0.5f,  0.5f, 1.5f}, // Close back face
-
-        // Remaining 3 Connecting Edges
-        { 0.5f, -0.5f, 1.5f}, // Move to Back Bottom-Right
-        { 0.5f, -0.5f, 1.0f}, // Connect to Front Bottom-Right
-        {-0.5f, -0.5f, 1.0f}, // Move to Front Bottom-Left
-        {-0.5f, -0.5f, 1.5f}, // Connect to Back Bottom-Left
-        {-0.5f,  0.5f, 1.5f}, // Move to Back Top-Left
-        {-0.5f,  0.5f, 1.0f}  // Connect to Front Top-Left
-    };
+    Mesh mesh = create_mesh(); 
+    std::vector<Coord> coords = mesh_to_coords(mesh);
 
     // Main Loop
     while(true) {

@@ -1,10 +1,8 @@
-#include <vector>
+#ifndef OBJ_PARSER_H
+#define OBJ_PARSER_H
 
-struct Coord {
-    float x;
-    float y;
-    float z;
-};
+#include <vector>
+#include "common.h" 
 
 struct Faces {
     int v1;
@@ -18,3 +16,5 @@ struct Mesh {
 };
 
 Mesh create_mesh();
+
+#endif
