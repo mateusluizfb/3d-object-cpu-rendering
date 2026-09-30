@@ -3,6 +3,7 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_oldnames.h>
+#include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_surface.h>
@@ -11,6 +12,7 @@
 #include <SDL3_image/SDL_image.h>
 #include <cmath>
 #include <string>
+#include <utility>
 #include <vector>
 #include <stdio.h>
 
@@ -41,6 +43,14 @@ float to_cartesian_y (float y) {
     // transform coordinates from NDC to the SDL coordinate system, where the top-left-edge is 0
 
     return (1 - ((y + 1) / 2)) * window_height; // 1 - is needed so -0.5 for example "goes down", where y goes from 1 to -1
+}
+
+Coord to_cartesian(Coord coord) {
+    return {
+        to_cartesian_x(coord.x),
+        to_cartesian_y(coord.y),
+        0
+    };
 }
 
 void render_point(SDL_Renderer* renderer, Coord coord) {
@@ -86,6 +96,96 @@ void render_lines(SDL_Renderer* renderer, std::vector<Coord>* coords) {
 
     if (!result){
         print("Error while drawing lines");
+    }
+}
+
+void render_flat_bottom_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2) {
+    // TODO: I still don't understand the need of this:
+    float inv_slope1 = (p1.x - p0.x) / (p1.y - p0.y);
+    float inv_slope2 = (p2.x - p0.x) / (p2.y - p0.y);
+
+    float cur_x1 = p0.x;
+    float cur_x2 = p0.x;
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+
+    for (int scan_line = p0.y; scan_line <= p1.y; scan_line++) {
+        int start = (int) std::min(cur_x1, cur_x2);
+        int end   = (int) std::max(cur_x1, cur_x2);
+
+        SDL_RenderLine(renderer, start, scan_line, end, scan_line);
+
+        cur_x1 += inv_slope1;
+        cur_x2 += inv_slope2;
+    }
+}
+
+void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2) {
+    // TODO: I still don't understand the need of this:
+    float inv_slope1 = (p2.x - p0.x) / (p2.y - p0.y);
+    float inv_slope2 = (p2.x - p1.x) / (p2.y - p1.y);
+
+    float cur_x1 = p2.x;
+    float cur_x2 = p2.x;
+
+    print("coord 0: " + std::to_string(p0.x));
+    print("coord 1: " + std::to_string(p1.x));
+    print("coord 2: " + std::to_string(p2.x));
+
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+
+    for (int scan_line = p2.y; scan_line >= p0.y; scan_line--) {
+        int start = (int) std::min(cur_x1, cur_x2);
+        int end   = (int) std::max(cur_x1, cur_x2);
+
+        SDL_RenderLine(renderer, start, scan_line, end, scan_line);
+        print("start: " + std::to_string(start));
+        print("end: " + std::to_string(end));
+        print("scan_line: " + std::to_string(scan_line));
+        cur_x1 -= inv_slope1;
+        cur_x2 -= inv_slope2;
+    }
+}
+
+void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
+    print("render triangles");
+
+    for (size_t i = 0; i < mesh.faces.size(); i++) {
+        Coord v1 = mesh.coords[mesh.faces[i].v1 - 1];
+        Coord v2 = mesh.coords[mesh.faces[i].v2 - 1];
+        Coord v3 = mesh.coords[mesh.faces[i].v3 - 1];
+
+        Coord p0 = to_cartesian(to_2d(v1));
+        Coord p1 = to_cartesian(to_2d(v2));
+        Coord p2 = to_cartesian(to_2d(v3));
+
+        if (p0.y > p1.y) std::swap(p0, p1);
+        if (p0.y > p2.y) std::swap(p0, p2);
+        if (p1.y > p2.y) std::swap(p1, p2);
+
+        if (p0.y == p2.y) return; // Ignore flat triangles
+
+        if (p1.y == p2.y) {
+            render_flat_bottom_triangle(renderer, p0, p1, p2);
+
+            continue;
+        }
+
+        if (p0.y == p1.y) {
+            render_flat_top_triangle(renderer, p0, p1, p2);
+
+            continue;
+        }
+        // split triangle to form a flat-bottom and flat-top triangles
+        // then fill them
+        
+        // linear interpolation along the long edge:
+        float x3 = p0.x + ((p1.y - p0.y) / (p2.y - p0.y)) * (p2.x - p0.x);
+
+        Coord p3 = { x3, p1.y };
+
+        render_flat_bottom_triangle(renderer, p0, p1, p3);
+        render_flat_top_triangle(renderer, p1, p3, p2);
     }
 }
 
@@ -147,7 +247,6 @@ std::vector<Coord> mesh_to_coords(Mesh mesh) {
     return coords;
 } 
 
-
 int main(int arhc, char* argv[]) {
     print("Starting");
 
@@ -193,9 +292,10 @@ int main(int arhc, char* argv[]) {
         // Render
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-   
+  
+        render_triangles(renderer, mesh);
         render_points(renderer, &coords);
-        render_lines(renderer, &coords); 
+        render_lines(renderer, &coords);
 
         if (exit) {
             break;
