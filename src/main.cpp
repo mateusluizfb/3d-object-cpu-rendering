@@ -70,21 +70,41 @@ void render_point(SDL_Renderer* renderer, Coord coord) {
     SDL_RenderFillRect(renderer, &pixel); 
 }
 
-void render_points(SDL_Renderer* renderer, std::vector<Coord>* coords) {
-     size_t size = coords->size();
+void render_points(SDL_Renderer* renderer, Mesh mesh) {
+    std::vector<Coord> coords = mesh.coords;
+
+    size_t size = coords.size();
 
     for (size_t i = 0; i < size; i++) {
-        Coord coord = (*coords)[i];
+        Coord coord = coords[i];
         render_point(renderer, to_2d(coord));
     }
 }
 
-void render_lines(SDL_Renderer* renderer, std::vector<Coord>* coords) {
-    size_t size = coords->size();
+void render_lines(SDL_Renderer* renderer, Mesh mesh) {
+    std::vector<Coord> coords = {};
+
+    // To use SDL_RenderLines, we need an extra coord
+    // that tells the api where is the last connecting point
+    for (size_t i = 0; i < mesh.faces.size(); i++) {
+        Coord v1 = mesh.coords[mesh.faces[i].v1 - 1];
+        Coord v2 = mesh.coords[mesh.faces[i].v2 - 1];
+        Coord v3 = mesh.coords[mesh.faces[i].v3 - 1];
+
+        coords.push_back(v1);
+        coords.push_back(v2);
+        coords.push_back(v3);
+        coords.push_back(v1);
+
+        // TODO: There are overlapping edges, from overlapping triangles
+    }
+
+
+    size_t size = coords.size();
     SDL_FPoint points[size];
 
     for (size_t i = 0; i < size; i++) {
-        Coord coord_2d = to_2d((*coords)[i]);
+        Coord coord_2d = to_2d(coords[i]);
 
         float x = to_cartesian_x(coord_2d.x);
         float y = to_cartesian_y(coord_2d.y);
@@ -128,10 +148,6 @@ void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord 
     float cur_x1 = p2.x;
     float cur_x2 = p2.x;
 
-    print("coord 0: " + std::to_string(p0.x));
-    print("coord 1: " + std::to_string(p1.x));
-    print("coord 2: " + std::to_string(p2.x));
-
     SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
 
     for (int scan_line = p2.y; scan_line >= p0.y; scan_line--) {
@@ -139,17 +155,12 @@ void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord 
         int end   = (int) std::max(cur_x1, cur_x2);
 
         SDL_RenderLine(renderer, start, scan_line, end, scan_line);
-        print("start: " + std::to_string(start));
-        print("end: " + std::to_string(end));
-        print("scan_line: " + std::to_string(scan_line));
         cur_x1 -= inv_slope1;
         cur_x2 -= inv_slope2;
     }
 }
 
 void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
-    print("render triangles");
-
     for (size_t i = 0; i < mesh.faces.size(); i++) {
         Coord v1 = mesh.coords[mesh.faces[i].v1 - 1];
         Coord v2 = mesh.coords[mesh.faces[i].v2 - 1];
@@ -260,8 +271,9 @@ int main(int arhc, char* argv[]) {
 
     Uint64 frameStart = -1;
 
-    Mesh mesh = create_mesh(); 
-    std::vector<Coord> coords = mesh_to_coords(mesh);
+    Mesh mesh = create_mesh();
+    std::vector<Coord>* mesh_coords_ptr = &mesh.coords;
+    // std::vector<Coord> coords = mesh_to_coords(mesh);
 
     // Main Loop
     while(true) {
@@ -270,7 +282,7 @@ int main(int arhc, char* argv[]) {
         frameStart = ticks;
 
         // Update
-        Coord center = get_center(coords);
+        Coord center = get_center(*mesh_coords_ptr);
 
         while(SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
@@ -278,8 +290,8 @@ int main(int arhc, char* argv[]) {
             }
         }
 
-        for (size_t i = 0; i < coords.size(); i++) {
-            Coord* coord_pointer = &coords[i];
+        for (size_t i = 0; i < mesh_coords_ptr->size(); i++) {
+            Coord* coord_pointer = &(*mesh_coords_ptr)[i];
             
             // rotate
             update_rotate(dt, center, coord_pointer); 
@@ -294,8 +306,8 @@ int main(int arhc, char* argv[]) {
         SDL_RenderClear(renderer);
   
         render_triangles(renderer, mesh);
-        render_points(renderer, &coords);
-        render_lines(renderer, &coords);
+        render_points(renderer, mesh);
+        render_lines(renderer, mesh);
 
         if (exit) {
             break;
