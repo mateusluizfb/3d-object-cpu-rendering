@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 #include <stdio.h>
+#include <algorithm>
 
 #include "common.h" 
 #include "obj_parser.h" 
@@ -26,6 +27,10 @@ int window_width = 1200;
 int window_height = 800;
 float pixel_h = 10.0f;
 float pixel_w = 10.0f;
+
+SDL_Color color_red = {255, 0, 0,};
+SDL_Color color_green = {0, 255, 0};
+SDL_Color color_blue = {0, 0, 255};
 
 Coord to_2d(Coord coord) {
     return {
@@ -119,7 +124,7 @@ void render_lines(SDL_Renderer* renderer, Mesh mesh) {
     }
 }
 
-void render_flat_bottom_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2) {
+void render_flat_bottom_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2, SDL_Color color) {
     // TODO: I still don't understand the need of this:
     float inv_slope1 = (p1.x - p0.x) / (p1.y - p0.y);
     float inv_slope2 = (p2.x - p0.x) / (p2.y - p0.y);
@@ -127,7 +132,7 @@ void render_flat_bottom_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coo
     float cur_x1 = p0.x;
     float cur_x2 = p0.x;
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255); // blue
 
     for (int scan_line = p0.y; scan_line <= p1.y; scan_line++) {
         int start = (int) std::min(cur_x1, cur_x2);
@@ -140,7 +145,7 @@ void render_flat_bottom_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coo
     }
 }
 
-void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2) {
+void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2, SDL_Color color) {
     // TODO: I still don't understand the need of this:
     float inv_slope1 = (p2.x - p0.x) / (p2.y - p0.y);
     float inv_slope2 = (p2.x - p1.x) / (p2.y - p1.y);
@@ -148,7 +153,7 @@ void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord 
     float cur_x1 = p2.x;
     float cur_x2 = p2.x;
 
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255); // green
 
     for (int scan_line = p2.y; scan_line >= p0.y; scan_line--) {
         int start = (int) std::min(cur_x1, cur_x2);
@@ -161,6 +166,22 @@ void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord 
 }
 
 void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
+    std::sort(mesh.faces.begin(), mesh.faces.end(), [mesh](Faces& a, Faces& b) {
+        Coord av1 = mesh.coords[a.v1 - 1];
+        Coord av2 = mesh.coords[a.v2 - 1];
+        Coord av3 = mesh.coords[a.v3 - 1];
+
+        Coord bv1 = mesh.coords[b.v1 - 1];
+        Coord bv2 = mesh.coords[b.v2 - 1];
+        Coord bv3 = mesh.coords[b.v3 - 1];
+
+        float acenter = (av1.z + av2.z + av3.z) / 3;
+        float bcenter = (bv1.z + bv2.z + bv3.z) / 3;
+
+        return (acenter > bcenter);
+    });
+
+
     for (size_t i = 0; i < mesh.faces.size(); i++) {
         Coord v1 = mesh.coords[mesh.faces[i].v1 - 1];
         Coord v2 = mesh.coords[mesh.faces[i].v2 - 1];
@@ -174,29 +195,27 @@ void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
         if (p0.y > p2.y) std::swap(p0, p2);
         if (p1.y > p2.y) std::swap(p1, p2);
 
-        if (p0.y == p2.y) return; // Ignore flat triangles
+        if (p0.y == p2.y) continue; // Ignore flat triangles
 
         if (p1.y == p2.y) {
-            render_flat_bottom_triangle(renderer, p0, p1, p2);
+            render_flat_bottom_triangle(renderer, p0, p1, p2, color_blue);
 
             continue;
         }
 
         if (p0.y == p1.y) {
-            render_flat_top_triangle(renderer, p0, p1, p2);
+            render_flat_top_triangle(renderer, p0, p1, p2, color_green);
 
             continue;
         }
-        // split triangle to form a flat-bottom and flat-top triangles
-        // then fill them
         
         // linear interpolation along the long edge:
         float x3 = p0.x + ((p1.y - p0.y) / (p2.y - p0.y)) * (p2.x - p0.x);
 
         Coord p3 = { x3, p1.y };
 
-        render_flat_bottom_triangle(renderer, p0, p1, p3);
-        render_flat_top_triangle(renderer, p1, p3, p2);
+        render_flat_bottom_triangle(renderer, p0, p1, p3, color_blue);
+        render_flat_top_triangle(renderer, p1, p3, p2, color_green);
     }
 }
 
@@ -226,7 +245,7 @@ Coord get_center(const std::vector<Coord>& coords) {
 }
 
 void update_rotate(float dt, Coord center, Coord* coord_pointer) {
-    double rotation_rate = (0.8 * dt);
+    double rotation_rate = (0.3 * dt);
 
     float x = (coord_pointer->x - center.x) * std::cos(rotation_rate) - (coord_pointer->z - center.z) * std::sin(rotation_rate);
     float z = (coord_pointer->x - center.x) * std::sin(rotation_rate) + (coord_pointer->z - center.z) * std::cos(rotation_rate);
@@ -314,6 +333,6 @@ int main(int arhc, char* argv[]) {
         }
 
         SDL_RenderPresent(renderer);
-        SDL_Delay(60); // Force 60 FPS -> 1000 (1s) / 60 = 66.6666...
+        SDL_Delay(30); // Force 60 FPS -> 1000 (1s) / 60 = 66.6666...
     }
 }
