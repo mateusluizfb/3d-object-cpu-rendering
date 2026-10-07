@@ -124,8 +124,24 @@ void render_lines(SDL_Renderer* renderer, Mesh mesh) {
     }
 }
 
+void render_light_lines(SDL_Renderer* renderer, Coord coord) {
+    Coord light_source = Coord{0.5, 0.5, 0};
+
+    Coord lg_coord_2d = to_cartesian(to_2d(light_source));
+    Coord target_coord_2d = to_cartesian(to_2d(coord));
+
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_RenderLine(
+        renderer,
+        lg_coord_2d.x,
+        lg_coord_2d.y,
+        target_coord_2d.x,
+        target_coord_2d.y
+    );
+}
+
 void render_flat_bottom_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord p2, SDL_Color color) {
-    // TODO: I still don't understand the need of this:
+    // TODO: I still don't understand the need of this, its a interpolation function afaik:
     float inv_slope1 = (p1.x - p0.x) / (p1.y - p0.y);
     float inv_slope2 = (p2.x - p0.x) / (p2.y - p0.y);
 
@@ -166,6 +182,7 @@ void render_flat_top_triangle(SDL_Renderer* renderer, Coord p0, Coord p1, Coord 
 }
 
 void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
+    // z-index sorting:
     std::sort(mesh.faces.begin(), mesh.faces.end(), [mesh](Faces& a, Faces& b) {
         Coord av1 = mesh.coords[a.v1 - 1];
         Coord av2 = mesh.coords[a.v2 - 1];
@@ -197,6 +214,7 @@ void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
 
         if (p0.y == p2.y) continue; // Ignore flat triangles
 
+
         if (p1.y == p2.y) {
             render_flat_bottom_triangle(renderer, p0, p1, p2, color_blue);
 
@@ -216,6 +234,14 @@ void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
 
         render_flat_bottom_triangle(renderer, p0, p1, p3, color_blue);
         render_flat_top_triangle(renderer, p1, p3, p2, color_green);
+
+
+        Coord center = Coord{
+            (v1.x + v2.x + v3.x) / 3,
+            (v1.y + v2.y + v3.y) / 3,
+            (v1.z + v2.z + v3.z) / 3,
+        }; 
+        render_light_lines(renderer, center);
     }
 }
 
@@ -316,7 +342,7 @@ int main(int arhc, char* argv[]) {
             update_rotate(dt, center, coord_pointer); 
 
             // move back
-            update_move_back(dt, coord_pointer);
+            // update_move_back(dt, coord_pointer);
         }
 
 
