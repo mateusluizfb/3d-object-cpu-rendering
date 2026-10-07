@@ -262,10 +262,10 @@ void render_triangles(SDL_Renderer* renderer, Mesh mesh) {
 
         // linear interpolation along the long edge:
         float x3 = p0.x + ((p1.y - p0.y) / (p2.y - p0.y)) * (p2.x - p0.x);
-
         Coord p3 = { x3, p1.y };
 
-        uint8_t blue_color_tone = static_cast<int>(255.0 * std::max(get_facing_light_dir(v1, v2, v3), 0.0f));
+        float light_dir = get_facing_light_dir(v1, v2, v3);
+        uint8_t blue_color_tone = static_cast<int>(255.0 * std::max(light_dir, 0.0f));
 
         render_flat_bottom_triangle(renderer, p0, p1, p3, {0, 0, blue_color_tone, 255});
         render_flat_top_triangle(renderer, p1, p3, p2, {0, 0, blue_color_tone, 255});
@@ -379,6 +379,9 @@ int main(int arhc, char* argv[]) {
             update_move_back(dt, coord_pointer);
         }
 
+        if (exit) {
+            break;
+        }
 
         // Render
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -387,10 +390,6 @@ int main(int arhc, char* argv[]) {
         render_triangles(renderer, mesh);
         render_points(renderer, mesh);
         render_lines(renderer, mesh);
-
-        if (exit) {
-            break;
-        }
 
         SDL_RenderPresent(renderer);
         SDL_Delay(30); // Force 60 FPS -> 1000 (1s) / 60 = 66.6666...
