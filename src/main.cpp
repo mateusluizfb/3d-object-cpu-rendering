@@ -392,6 +392,6 @@ int main(int arhc, char* argv[]) {
         render_lines(renderer, mesh);
 
         SDL_RenderPresent(renderer);
-        SDL_Delay(30); // Force 60 FPS -> 1000 (1s) / 60 = 66.6666...
+        SDL_Delay(16); // Force 60 FPS -> 1000 (1s) / 60 = 16.6666...
     }
 }
